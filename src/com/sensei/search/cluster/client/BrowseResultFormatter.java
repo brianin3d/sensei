@@ -9,6 +9,8 @@ import com.browseengine.bobo.api.BrowseHit;
 import com.browseengine.bobo.api.BrowseResult;
 import com.browseengine.bobo.api.FacetAccessible;
 
+import org.apache.lucene.document.Fieldable;
+
 public class BrowseResultFormatter{
     
     static String formatResults(BrowseResult res) {
@@ -37,19 +39,26 @@ public class BrowseResultFormatter{
             return sb.toString();
     }
     
-    static StringBuffer formatHit(BrowseHit hit) {
-            StringBuffer sb = new StringBuffer();
-            Map<String, String[]> fields = hit.getFieldValues();
-            Set<String> keys = fields.keySet();
-            for(String key : keys) {
-                    sb.append("\t" + key + " :");
-                    String[] values = fields.get(key);
-                    for(String value : values)
-                    {
-                            sb.append(" " + value);
-                    }
-                    sb.append("\n");
-            }
-            return sb;
-    }
+	static StringBuffer formatHit(BrowseHit hit) {
+		StringBuffer sb = new StringBuffer();
+		
+		for ( Map.Entry< String, String[] > entry : hit.getFieldValues().entrySet() ) {
+			sb.append( entry.getKey() ).append( ":" );
+			formatValues( sb, entry.getValue() );
+		}
+		if ( null != hit.getStoredFields() ) {
+			for ( Fieldable field : hit.getStoredFields().getFields() ) {
+				sb.append( field.name() ).append( ":" ).append( field.stringValue() ).append( "\n" );
+			}
+		}
+		return sb;
+	}
+
+	static void formatValues( StringBuffer sb, String values[] ) {
+		for ( int i = 0 ; i < values.length ; i++ ) {
+			if ( 0 != i ) sb.append( "," );
+			sb.append( " " ).append( values[ i ] );
+		}
+		sb.append( "\n" );
+	}
 }
