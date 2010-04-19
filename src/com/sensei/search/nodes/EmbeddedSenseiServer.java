@@ -7,7 +7,11 @@ import java.util.Set;
 
 import java.lang.management.ManagementFactory;
 
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import javax.management.StandardMBean;
 
@@ -98,27 +102,16 @@ public class EmbeddedSenseiServer {
 		for ( int part : _partitions ){
 			ZoieSystem<BoboIndexReader,?> zoieSystem = zoieSystemMap.get( part );
 
-			// register ZoieSystemAdminMBean
-			mbeanServer.registerMBean(
-				new StandardMBean(zoieSystem.getAdminMBean(), ZoieSystemAdminMBean.class)
-				, new ObjectName(clusterName, "name", "zoie-system-" + part)
-			);
+			try {
+				this.registerBean( mbeanServer, zoieSystem, clusterName, part );
+			} catch( Exception e ) {
+				logger.error( e.toString() );	
+			}
 
-			// register ZoieIndexingStatusAdminMBean
-			mbeanServer.registerMBean(
-					new StandardMBean(
-						new ZoieIndexingStatusAdmin(zoieSystem), ZoieIndexingStatusAdminMBean.class
-						)
-					, new ObjectName(clusterName, "name", "zoie-indexing-status-" + part )
-					);
-
-
-			// beans for zoieSystem should use "start" as their init-methods:
-			zoieSystems.add(zoieSystem);
+			zoieSystems.add( zoieSystem );
 
 			SenseiIndexLoader loader = indexLoaderFactory.getIndexLoader(part, zoieSystem);
-			if(!indexLoaders.contains(loader))
-			{
+			if(!indexLoaders.contains(loader)) {
 				loader.start();
 				indexLoaders.add(loader);
 			}
@@ -140,6 +133,22 @@ public class EmbeddedSenseiServer {
 	
 		//Runtime.getRuntime().addShutdownHook( new ShutdownHook( this ) );
 		logger.info( "started" );
+	}
+
+	public void registerBean( MBeanServer mbeanServer, ZoieSystem zoieSystem, String clusterName, int part ) throws NotCompliantMBeanException , MalformedObjectNameException , InstanceAlreadyExistsException , NotCompliantMBeanException , MalformedObjectNameException , InstanceAlreadyExistsException, MBeanRegistrationException {
+		// register ZoieSystemAdminMBean
+		mbeanServer.registerMBean(
+				new StandardMBean(zoieSystem.getAdminMBean(), ZoieSystemAdminMBean.class)
+				, new ObjectName(clusterName, "name", "zoie-system-" + part)
+				);
+
+		// register ZoieIndexingStatusAdminMBean
+		mbeanServer.registerMBean(
+				new StandardMBean(
+					new ZoieIndexingStatusAdmin(zoieSystem), ZoieIndexingStatusAdminMBean.class
+					)
+				, new ObjectName(clusterName, "name", "zoie-indexing-status-" + part )
+				);
 	}
 
 	public void shutdown() {
